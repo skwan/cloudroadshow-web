@@ -49,10 +49,13 @@ namespace Tdlr
 
             app.UseWindowsAzureActiveDirectoryBearerAuthentication(new WindowsAzureActiveDirectoryBearerAuthenticationOptions
             {
-                Audience = "https://strockisdevtwo.onmicrosoft.com/tdlr",
-                Tenant = "strockisdevtwo.onmicrosoft.com",
+                // Replace deprecated parameter with TVP.ValidAudience
+                //
+                //Audience = "https://strockisdevtwo.onmicrosoft.com/tdlr",
+                Tenant = "dev.skwantoso.com",
                 TokenValidationParameters = new System.IdentityModel.Tokens.TokenValidationParameters
                 {
+                    ValidAudience = "https://dev.skwantoso.com/tdlr",
                     ValidateIssuer = false,
                 },
                 AuthenticationType = "AADBearer",
@@ -68,6 +71,15 @@ namespace Tdlr
                 notification.ProtocolMessage.LoginHint = login_hint;
             }
 
+            // Override the post signout redirect URI to be the URL of the app determined on the fly.
+            // That way sign out works without config change regardless if running locally or running in the cloud.
+            if (notification.Request.Path.Value.ToLower() == "/account/signout")
+                notification.ProtocolMessage.PostLogoutRedirectUri = HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority);
+
+            // Explicitly add the redirectUri to the request.
+            // This allows multiple redirect URIs to be registered in Azure AD, one for running locally and one for when running in the cloud.
+            notification.ProtocolMessage.RedirectUri = (new Uri(HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority))).ToString();
+
             return Task.FromResult(0);
         }
 
@@ -78,7 +90,7 @@ namespace Tdlr
             string tenantId = notification.AuthenticationTicket.Identity.FindFirst(Globals.TenantIdClaimType).Value;
             AuthenticationContext authContext = new AuthenticationContext(String.Format(CultureInfo.InvariantCulture, ConfigHelper.AadInstance, tenantId), new TokenDbCache(userObjectId));
             AuthenticationResult result = authContext.AcquireTokenByAuthorizationCode(
-                notification.Code, new Uri(HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Path)), credential, ConfigHelper.GraphResourceId);
+                notification.Code, new Uri(HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority)), credential, ConfigHelper.GraphResourceId);
             return Task.FromResult(0);
         }
 
