@@ -33,7 +33,6 @@ namespace Tdlr.Controllers
             if (redirectUri == null)
                 redirectUri = "/";
 
-
             HttpContext.GetOwinContext()
                 .Authentication.Challenge(new AuthenticationProperties { RedirectUri = redirectUri },
                     OpenIdConnectAuthenticationDefaults.AuthenticationType);
